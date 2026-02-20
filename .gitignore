@@ -1,0 +1,4 @@
+*.pyc
+__pycache__/
+*.exe
+.DS_Store

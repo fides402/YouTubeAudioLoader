@@ -3,7 +3,6 @@ import os
 from pathlib import Path
 import yt_dlp
 import time
-import shutil
 
 st.set_page_config(
     page_title="YouTube Audio Loader",
@@ -39,11 +38,6 @@ st.markdown("""
         font-size: 1.2em;
         border: none;
         width: 100%;
-        transition: all 0.3s;
-    }
-    .stButton>button:hover {
-        transform: scale(1.02);
-        box-shadow: 0 5px 20px rgba(0,255,136,0.3);
     }
     .file-card {
         background: linear-gradient(135deg, #333, #2a2a2a);
@@ -51,17 +45,6 @@ st.markdown("""
         border-radius: 15px;
         margin: 10px 0;
         border: 1px solid #444;
-        display: flex;
-        align-items: center;
-        gap: 15px;
-    }
-    .folder-box {
-        background: #252525;
-        padding: 20px;
-        border-radius: 15px;
-        text-align: center;
-        margin-top: 30px;
-        border: 1px dashed #444;
     }
     .success-box {
         background: linear-gradient(135deg, #00ff88, #00cc6a);
@@ -80,9 +63,6 @@ st.markdown("""
         padding: 15px;
         font-size: 1.1em;
     }
-    div[data-testid="stTextInput"] input:focus {
-        border-color: #00ff88;
-    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -98,15 +78,19 @@ if st.button("⬇️ DOWNLOAD AUDIO", use_container_width=True):
     if url.strip():
         try:
             ydl_opts = {
-                'format': 'bestaudio/best',
+                'format': 'bestaudio[ext=m4a]/bestaudio/best',
                 'outtmpl': str(output_dir / '%(title)s.%(ext)s'),
                 'quiet': True,
                 'no_warnings': True,
+                'http_headers': {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                },
             }
             
             with st.spinner("Downloading..."):
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                    ydl.download([url])
+                    info = ydl.extract_info(url, download=True)
+                    title = info.get('title', 'audio')
                 
                 st.markdown('''
                 <div class="success-box">
@@ -117,7 +101,11 @@ if st.button("⬇️ DOWNLOAD AUDIO", use_container_width=True):
                 st.rerun()
                 
         except Exception as e:
-            st.error(f"❌ Error: {str(e)}")
+            error_msg = str(e)
+            if "403" in error_msg:
+                st.error("❌ YouTube blocked the download. Try again later or use a VPN.")
+            else:
+                st.error(f"❌ Error: {error_msg}")
     else:
         st.warning("⚠️ Please enter a YouTube URL")
 
@@ -132,20 +120,13 @@ if audio_files:
         size = os.path.getsize(f) / (1024 * 1024)
         st.markdown(f'''
         <div class="file-card">
-            <span class="file-icon">🎵</span>
-            <span class="file-name">{f.name}</span>
+            <span>🎵 {f.name}</span>
             <span style="color: #888;">{size:.1f} MB</span>
         </div>
         ''', unsafe_allow_html=True)
-    
-    st.markdown(f'''
-    <div class="folder-box">
-        <p style="color: #888; margin-bottom: 10px;">📂 Files saved to:</p>
-        <code style="color: #00ff88;">{output_dir}</code>
-    </div>
-    ''', unsafe_allow_html=True)
 else:
-    st.info("🎵 No downloads yet. Paste a URL above!")
+    st.info("🎵 No downloads yet")
 
+st.markdown("---")
 if st.button("📂 Open Downloads Folder"):
     os.startfile(str(output_dir))
